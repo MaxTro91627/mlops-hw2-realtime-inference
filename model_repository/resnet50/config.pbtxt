@@ -1,0 +1,35 @@
+name: "resnet50"
+platform: "onnxruntime_onnx"
+max_batch_size: 32
+
+input [
+  {
+    name: "INPUT__0"
+    data_type: TYPE_FP32
+    dims: [ 3, 224, 224 ]
+  }
+]
+
+output [
+  {
+    name: "OUTPUT__0"
+    data_type: TYPE_FP32
+    dims: [ 1000 ]
+  }
+]
+
+instance_group [
+  {
+    count: 1
+    kind: KIND_GPU
+  }
+]
+
+# Окно ожидания соседних запросов. Подобрано по метрикам под нагрузкой
+# (20 параллельных, микс vision + chat, 20 с): nv_inference_count / nv_inference_exec_count
+#   5 мс  -> средний батч 1.69, 15 мс -> 2.19; одиночный /vision p95 при этом ~70 мс
+# (SLO p95 < 400 мс), поэтому берём 15 мс.
+dynamic_batching {
+  preferred_batch_size: [ 4, 8, 16 ]
+  max_queue_delay_microseconds: 15000
+}
